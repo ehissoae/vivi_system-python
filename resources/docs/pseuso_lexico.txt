@@ -1,0 +1,14 @@
+numero_int = tudo q dah certo com int() !!
+numero_float = tudo q dah certo com float() !!
+
+chamada_funcao = identificador(      <-- look ahead no '('
+
+
+
+
+separadores de tokens:
+	tudo q nao seja letra, '_', numero ou '.'
+
+
+diagrama porco do banco
+https://drive.google.com/file/d/1i4a0mYIWXb5HAX28UiBTbS_MSJBvT9gA/view?usp=sharing
