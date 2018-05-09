@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from models import session, SelectAlias, SelectExpression
 
 TOKEN_TYPES = [
 	'string',
@@ -125,7 +126,7 @@ def separate_by_select_statement(tokens):
 	for token in tokens:
 		token_value = token['value']
 
-		select_expression_tokens.append(token_value)
+		select_expression_tokens.append(token)
 
 		if token_value == '(':
 			parentesis_depth = parentesis_depth + 1
@@ -141,11 +142,34 @@ def separate_by_select_statement(tokens):
 
 			select_expression_tokens = []
 
-	return select_expressions
-	
+	if select_expression_tokens:
+		select_expressions.append(select_expression_tokens)
 
+	return select_expressions
+
+def _join_tokens(tokens):
+	return ' '.join([x['value'] for x in tokens])
+
+def get_alias(tokens):
+	last_token = tokens[-1]
+	if last_token['type'] != 'table_field':
+		return _join_tokens(tokens)
+
+	if len(tokens) == 1:
+		return last_token['value'].split('.')[-1]
+
+	before_last_token = tokens[-2]
+	if before_last_token['value'] == 'as':
+		return last_token['value']
+
+	if before_last_token['value'] in '+/-*':
+		return _join_tokens(tokens)
+
+	return last_token['value']
+		
 test_file = open('resources/fake_queries/test.sql', 'r')
 test_sql = test_file.read()
+# test_sql = clean_comments(test_sql)
 
 for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentario ou string
 	sql_statement = clean_comments(sql_statement)
@@ -154,4 +178,18 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(tokens)
 
-	print '\n'.join([str(x) for x in select_expressions])
+	for select_expression in select_expressions:
+		alias_name = get_alias(select_expression)
+		raw_select_expression = _join_tokens(select_expression)
+
+		db_alias = SelectAlias(name=alias_name)
+		db_expression = SelectExpression(raw_expression=raw_select_expression, parametrized_expression='Nay')
+
+		session.add(db_alias)
+		session.add(db_expression)
+		db_alias.select_expressions.extend([db_expression])
+
+	session.commit()
+
+	# print '\n'.join(["%s: %s" % (get_alias(x), str([y['value'] for y in x])) for x in select_expressions])
+	# print '*********************'
