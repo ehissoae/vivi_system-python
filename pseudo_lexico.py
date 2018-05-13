@@ -1,13 +1,46 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from models import session, SelectAlias, SelectExpression
+from models import session, SelectAlias, SelectExpression, TableField, Table, TableAlias
 
 TOKEN_TYPES = [
 	'string',
 	'constant',
 	'function',
 	'table_field',
+	'keyword',
+]
+
+KEYWORDS = [
+	'select',
+	'as',
+	'case',
+	'when',
+	'then',
+	'end',
+	'from',
+	'full',
+	'outer',
+	'left',
+	'right',
+	'join',
+	'where',
+	'group',
+	'by',
+	'order',
+	'desc',
+	'asc',
+	'limit',
+	'offset',
+]
+
+COMPOUND_KEYWORDS = [
+	('left', 'join'),
+	('right', 'join'),
+	('inner', 'join'),
+
+	('group', 'by'),
+	('order', 'by'),
 ]
 
 import re
@@ -32,7 +65,7 @@ def clean_comments(statement):
 	# raise Exception()
 	return statement
 
-def tokenize(statement):
+def base_tokenize(statement):
 	current_token_chars = []
 	tokens = []
 	quote_type = ''
@@ -77,9 +110,9 @@ def tokenize(statement):
 					except Exception as e:
 						pass
 
-				if token_type == 'table_field':
-					# checar se eh 'function'
-					pass
+				# if token_type == 'table_field':
+				# 	# checar se eh 'function'
+				# 	pass
 
 				token = {
 					'value': token_value.lower(),
@@ -88,8 +121,6 @@ def tokenize(statement):
 
 				tokens.append(token)
 				current_token_chars = []
-
-				
 
 				# print '*********'
 				# print "'%s'" % token
@@ -107,6 +138,17 @@ def tokenize(statement):
 
 		else:
 			current_token_chars.append(char)
+
+	return tokens
+
+def tokenize(statement):
+	base_tokens = base_tokenize(statement)
+
+	tokens = []
+	for token in base_tokens:
+
+
+		tokens.append(token)
 
 	return tokens
 
@@ -265,6 +307,16 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 		print '*********'
 		print _join_tokens(table_expression)
 		print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
+
+		db_table = Table(name=table['value'])
+		session.add(db_table)
+		if alias:
+			db_table_alias = TableAlias(name=alias['value'])
+			session.add(db_table_alias)
+
+			db_table.table_aliases.extend([db_table_alias])
+
+	session.commit()
 		
 	print '================'
 	print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
