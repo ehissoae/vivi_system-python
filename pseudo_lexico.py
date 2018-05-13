@@ -119,6 +119,24 @@ def get_select_tokens(tokens):
 
 	return tokens[start+1:end]
 
+def get_index(search_list, value):
+	try:
+		return search_list.index(value)
+	except Exception as e:
+		return None
+
+def get_from_tokens(tokens):
+	token_values = [x['value'] for x in tokens]
+
+	start = token_values.index('from')
+	end_where = get_index(token_values, 'where')
+	end_group = get_index(token_values, 'group by') # precisa mudar tokenizer para pegar key words
+	end_order = get_index(token_values, 'order by') # precisa mudar tokenizer para pegar key words
+	end_limit = get_index(token_values, 'limit')
+
+	end = end_where or end_group or end_order or end_limit or len(token_values)
+	return tokens[start+1:end]
+
 def separate_by_select_statement(tokens):
 	select_expressions = []
 	select_expression_tokens = []
@@ -146,6 +164,25 @@ def separate_by_select_statement(tokens):
 		select_expressions.append(select_expression_tokens)
 
 	return select_expressions
+
+def separate_by_table_statement(tokens):
+	table_expressions = []
+	table_expression_tokens = []
+	for token in tokens:
+		token_value = token['value']
+
+		if token_value in ('left', 'right', 'inner', 'join') and table_expression_tokens:
+			# table_expression = ' '.join(table_expression_tokens)
+			table_expressions.append(table_expression_tokens)
+
+			table_expression_tokens = []
+		else:
+			table_expression_tokens.append(token)
+
+	if table_expression_tokens:
+		table_expressions.append(table_expression_tokens)
+
+	return table_expressions
 
 def _join_tokens(tokens):
 	return ' '.join([x['value'] for x in tokens])
@@ -175,8 +212,8 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	sql_statement = clean_comments(sql_statement)
 
 	tokens = tokenize(sql_statement)
-	tokens = get_select_tokens(tokens)
-	select_expressions = separate_by_select_statement(tokens)
+	select_tokens = get_select_tokens(tokens)
+	select_expressions = separate_by_select_statement(select_tokens)
 
 	for select_expression in select_expressions:
 		alias_name = get_alias(select_expression)
@@ -190,6 +227,12 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 		db_alias.select_expressions.extend([db_expression])
 
 	session.commit()
+
+	from_tokens = get_from_tokens(tokens)
+	# print '\n'.join([x['value'] for x in from_tokens])
+
+	table_expressions = separate_by_table_statement(from_tokens)
+	print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
 
 	# print '\n'.join(["%s: %s" % (get_alias(x), str([y['value'] for y in x])) for x in select_expressions])
 	# print '*********************'
