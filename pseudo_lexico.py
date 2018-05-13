@@ -171,11 +171,12 @@ def separate_by_table_statement(tokens):
 	for token in tokens:
 		token_value = token['value']
 
-		if token_value in ('left', 'right', 'inner', 'join') and table_expression_tokens:
-			# table_expression = ' '.join(table_expression_tokens)
-			table_expressions.append(table_expression_tokens)
+		if token_value in ('left', 'right', 'inner', 'join'):
+			if table_expression_tokens:
+				# table_expression = ' '.join(table_expression_tokens)
+				table_expressions.append(table_expression_tokens)
 
-			table_expression_tokens = []
+				table_expression_tokens = []
 		else:
 			table_expression_tokens.append(token)
 
@@ -185,7 +186,16 @@ def separate_by_table_statement(tokens):
 	return table_expressions
 
 def _join_tokens(tokens):
+	if not tokens:
+		return ''
+
 	return ' '.join([x['value'] for x in tokens])
+
+def _get_token_value(token):
+	if not token:
+		return None
+
+	return token.get('value')
 
 def get_alias(tokens):
 	last_token = tokens[-1]
@@ -203,6 +213,23 @@ def get_alias(tokens):
 		return _join_tokens(tokens)
 
 	return last_token['value']
+
+def separate_table_expression(tokens):
+	table = None
+	alias = None
+	on_conditions = None
+
+	token_values = [x['value'] for x in tokens]
+	on_index = get_index(token_values, 'on')
+	if on_index:
+		on_conditions = tokens[on_index+1:]
+		tokens = tokens[:on_index]
+
+	table = tokens[0]
+	if len(tokens) > 1:
+		alias = tokens[1]
+
+	return table, alias, on_conditions
 		
 test_file = open('resources/fake_queries/test.sql', 'r')
 test_sql = test_file.read()
@@ -232,6 +259,14 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	# print '\n'.join([x['value'] for x in from_tokens])
 
 	table_expressions = separate_by_table_statement(from_tokens)
+	for table_expression in table_expressions:
+		table, alias, on_conditions = separate_table_expression(table_expression)
+
+		print '*********'
+		print _join_tokens(table_expression)
+		print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
+		
+	print '================'
 	print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
 
 	# print '\n'.join(["%s: %s" % (get_alias(x), str([y['value'] for y in x])) for x in select_expressions])
