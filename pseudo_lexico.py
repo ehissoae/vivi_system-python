@@ -3,15 +3,15 @@
 
 from models import session, SelectAlias, SelectExpression, TableField, Table, TableAlias
 
-TOKEN_TYPES = [
+BASE_TOKEN_TYPES = [
 	'string',
 	'constant',
 	'function',
 	'table_field',
-	'keyword',
+	# 'keyword',
 ]
 
-KEYWORDS = [
+KEYWORDS = {
 	'select',
 	'as',
 	'case',
@@ -23,6 +23,7 @@ KEYWORDS = [
 	'outer',
 	'left',
 	'right',
+	'inner',
 	'join',
 	'where',
 	'group',
@@ -32,16 +33,25 @@ KEYWORDS = [
 	'asc',
 	'limit',
 	'offset',
-]
+}
 
-COMPOUND_KEYWORDS = [
-	('left', 'join'),
-	('right', 'join'),
-	('inner', 'join'),
+# COMPOUND_KEYWORDS = [
+# 	('left', 'join'),
+# 	('right', 'join'),
+# 	('inner', 'join'),
 
-	('group', 'by'),
-	('order', 'by'),
-]
+# 	('group', 'by'),
+# 	('order', 'by'),
+# ]
+
+COMPOUND_KEYWORDS = {
+	'left': {'join': True},
+	'right': {'join': True},
+	'inner': {'join': True},
+
+	'group': {'by': True},
+	'order': {'by': True},
+}
 
 import re
 
@@ -145,10 +155,66 @@ def tokenize(statement):
 	base_tokens = base_tokenize(statement)
 
 	tokens = []
+	possible_merge_tokens = []
 	for token in base_tokens:
+		# print '**************'
+		# print token
+
+		if token['type'] != 'table_field':
+			# print 'not keyword'
+
+			for not_m_token in possible_merge_tokens:
+				not_m_token['type'] = 'keyword'
+				tokens.append(not_m_token)
+
+			possible_merge_tokens = []
+
+			tokens.append(token)
+		elif token['value'] in KEYWORDS:
+			# print 'maybe keyword'
+			# verificar keyword
+			possible_merge_tokens.append(token)
+			merge_dict = COMPOUND_KEYWORDS
+			for m_token in possible_merge_tokens:
+				# print possible_merge_tokens
+				merge_dict = merge_dict.get(m_token['value'])
+
+			if merge_dict is None:
+				# tentou seguir o dicionario mas falhou
+				for not_m_token in possible_merge_tokens:
+					token['type'] = 'keyword'
+					tokens.append(token)
+					possible_merge_tokens = []
+
+				# print '-- not really kword...'
+
+			elif merge_dict is True:
+				merged_token = {
+					'type': 'keyword',
+					'value': _join_tokens(possible_merge_tokens),
+				}
+				tokens.append(merged_token)
+				possible_merge_tokens = []
+
+				# print '-- really kword!'
+
+			else:
+				pass
+				# print '-- not sure yet'
+
+		else:
+			for not_m_token in possible_merge_tokens:
+				not_m_token['type'] = 'keyword'
+				tokens.append(not_m_token)
+
+			possible_merge_tokens = []
+			tokens.append(token)
 
 
-		tokens.append(token)
+
+	for not_m_token in possible_merge_tokens:
+		not_m_token['type'] = 'keyword'
+		tokens.append(not_m_token)
 
 	return tokens
 
@@ -213,7 +279,7 @@ def separate_by_table_statement(tokens):
 	for token in tokens:
 		token_value = token['value']
 
-		if token_value in ('left', 'right', 'inner', 'join'):
+		if token_value in ('left join', 'right join', 'inner join', 'join'):
 			if table_expression_tokens:
 				# table_expression = ' '.join(table_expression_tokens)
 				table_expressions.append(table_expression_tokens)
@@ -281,6 +347,8 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	sql_statement = clean_comments(sql_statement)
 
 	tokens = tokenize(sql_statement)
+	# print '\n'.join([x['value'] for x in tokens])
+
 	select_tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(select_tokens)
 
@@ -304,9 +372,9 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	for table_expression in table_expressions:
 		table, alias, on_conditions = separate_table_expression(table_expression)
 
-		print '*********'
-		print _join_tokens(table_expression)
-		print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
+		# print '*********'
+		# print _join_tokens(table_expression)
+		# print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
 
 		db_table = Table(name=table['value'])
 		session.add(db_table)

@@ -26,6 +26,7 @@ SELECT
 	CONCAT(pc.sku_config, "-", ps.size) as sku_plus_size
 FROM star_schema.dim_product_config pc
 INNER JOIN star_schema.dim_product_simple ps on ps.fk_product_config = pc.id_product_config
+ORDER BY pc.sku_config
 LIMIT 100
 ;
 
