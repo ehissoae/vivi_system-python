@@ -156,6 +156,12 @@ def tokenize(statement):
 
 	tokens = []
 	possible_merge_tokens = []
+	def flush_possible_merge_tokens():
+		for not_m_token in possible_merge_tokens:
+			tokens.append(token)
+
+		possible_merge_tokens[:] = []
+
 	for token in base_tokens:
 		# print '**************'
 		# print token
@@ -174,7 +180,7 @@ def tokenize(statement):
 				for not_m_token in possible_merge_tokens:
 					token['type'] = 'keyword'
 					tokens.append(token)
-					possible_merge_tokens = []
+				possible_merge_tokens = []
 
 				# print '-- not really kword...'
 
@@ -192,28 +198,14 @@ def tokenize(statement):
 				pass
 				# print '-- not sure yet'
 
-		elif token['type'] != 'table_field':
-			# print 'not keyword'
-
-			for not_m_token in possible_merge_tokens:
-				not_m_token['type'] = 'keyword'
-				tokens.append(not_m_token)
-
-			possible_merge_tokens = []
-
+		elif token['type'] == 'table_field':
+			flush_possible_merge_tokens()
 			tokens.append(token)
-			
+
 		else:
-			for not_m_token in possible_merge_tokens:
-				not_m_token['type'] = 'keyword'
-				tokens.append(not_m_token)
-
-			possible_merge_tokens = []
+			flush_possible_merge_tokens()
 			tokens.append(token)
 
-	for not_m_token in possible_merge_tokens:
-		not_m_token['type'] = 'keyword'
-		tokens.append(not_m_token)
 
 	return tokens
 
