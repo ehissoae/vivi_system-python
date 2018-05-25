@@ -17,6 +17,7 @@ KEYWORDS = {
 	'case',
 	'when',
 	'then',
+	'else',
 	'end',
 	'from',
 	'full',
@@ -358,6 +359,8 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 
 	tokens = tokenize(sql_statement)
 	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens])
+	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens if x['type'] == 'table_field'])
+	# raise Exception()
 
 	select_tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(select_tokens)
