@@ -108,7 +108,7 @@ def base_tokenize(statement):
 
 		elif is_token_separator(char):
 			if current_token_chars:
-				token_value = ''.join(current_token_chars)
+				token_value = ''.join(current_token_chars).lower()
 				token_type = 'table_field'
 				try:
 					int(token_value)
@@ -120,12 +120,12 @@ def base_tokenize(statement):
 					except Exception as e:
 						pass
 
-				# if token_type == 'table_field':
-				# 	# checar se eh 'function'
-				# 	pass
+				if token_type == 'table_field' and token_value in KEYWORDS:
+					token_type = 'keyword'
+					
 
 				token = {
-					'value': token_value.lower(),
+					'value': token_value,
 					'type': token_type,
 				}
 
@@ -160,17 +160,7 @@ def tokenize(statement):
 		# print '**************'
 		# print token
 
-		if token['type'] != 'table_field':
-			# print 'not keyword'
-
-			for not_m_token in possible_merge_tokens:
-				not_m_token['type'] = 'keyword'
-				tokens.append(not_m_token)
-
-			possible_merge_tokens = []
-
-			tokens.append(token)
-		elif token['value'] in KEYWORDS:
+		if token['type'] == 'keyword':
 			# print 'maybe keyword'
 			# verificar keyword
 			possible_merge_tokens.append(token)
@@ -202,6 +192,17 @@ def tokenize(statement):
 				pass
 				# print '-- not sure yet'
 
+		elif token['type'] != 'table_field':
+			# print 'not keyword'
+
+			for not_m_token in possible_merge_tokens:
+				not_m_token['type'] = 'keyword'
+				tokens.append(not_m_token)
+
+			possible_merge_tokens = []
+
+			tokens.append(token)
+			
 		else:
 			for not_m_token in possible_merge_tokens:
 				not_m_token['type'] = 'keyword'
@@ -209,8 +210,6 @@ def tokenize(statement):
 
 			possible_merge_tokens = []
 			tokens.append(token)
-
-
 
 	for not_m_token in possible_merge_tokens:
 		not_m_token['type'] = 'keyword'
