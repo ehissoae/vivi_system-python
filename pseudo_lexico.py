@@ -156,9 +156,10 @@ def tokenize(statement):
 
 	tokens = []
 	possible_merge_tokens = []
+	possible_merge_type = None
 	def flush_possible_merge_tokens():
 		for not_m_token in possible_merge_tokens:
-			tokens.append(token)
+			tokens.append(not_m_token)
 
 		possible_merge_tokens[:] = []
 
@@ -167,9 +168,13 @@ def tokenize(statement):
 		# print token
 
 		if token['type'] == 'keyword':
+			if possible_merge_type != 'keyword':
+				flush_possible_merge_tokens()
+
 			# print 'maybe keyword'
 			# verificar keyword
 			possible_merge_tokens.append(token)
+
 			merge_dict = COMPOUND_KEYWORDS
 			for m_token in possible_merge_tokens:
 				# print possible_merge_tokens
@@ -177,12 +182,9 @@ def tokenize(statement):
 
 			if merge_dict is None:
 				# tentou seguir o dicionario mas falhou
-				for not_m_token in possible_merge_tokens:
-					token['type'] = 'keyword'
-					tokens.append(token)
-				possible_merge_tokens = []
-
 				# print '-- not really kword...'
+				flush_possible_merge_tokens()
+				possible_merge_type = None
 
 			elif merge_dict is True:
 				merged_token = {
@@ -191,19 +193,36 @@ def tokenize(statement):
 				}
 				tokens.append(merged_token)
 				possible_merge_tokens = []
+				possible_merge_type = None
 
 				# print '-- really kword!'
 
 			else:
-				pass
+				possible_merge_type = 'keyword'
 				# print '-- not sure yet'
 
 		elif token['type'] == 'table_field':
 			flush_possible_merge_tokens()
-			tokens.append(token)
+
+			possible_merge_tokens.append(token)
+			possible_merge_type = 'function'
+
+		elif token['type'] == '(' and possible_merge_type == 'function' and possible_merge_tokens:
+			if len(possible_merge_tokens) != 1:
+				raise Exception(possible_merge_tokens)
+
+			function_token = {
+				'type': 'function',
+				'value': _join_tokens(possible_merge_tokens),
+			}
+			tokens.append(function_token)
+
+			possible_merge_tokens = []
+			possible_merge_type = None
 
 		else:
 			flush_possible_merge_tokens()
+			possible_merge_type = None
 			tokens.append(token)
 
 
@@ -338,7 +357,7 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	sql_statement = clean_comments(sql_statement)
 
 	tokens = tokenize(sql_statement)
-	# print '\n'.join([x['value'] for x in tokens])
+	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens])
 
 	select_tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(select_tokens)
@@ -377,8 +396,8 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 
 	session.commit()
 		
-	print '================'
-	print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
+	# print '================'
+	# print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
 
 	# print '\n'.join(["%s: %s" % (get_alias(x), str([y['value'] for y in x])) for x in select_expressions])
 	# print '*********************'
