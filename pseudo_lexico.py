@@ -221,6 +221,8 @@ def tokenize(statement):
 			possible_merge_tokens = []
 			possible_merge_type = None
 
+			tokens.append(token)
+
 		else:
 			flush_possible_merge_tokens()
 			possible_merge_type = None
@@ -316,22 +318,22 @@ def _get_token_value(token):
 
 	return token.get('value')
 
-def get_alias(tokens):
+def separate_alias(tokens):
 	last_token = tokens[-1]
 	if last_token['type'] != 'table_field':
-		return _join_tokens(tokens)
+		return tokens, _join_tokens(tokens)
 
 	if len(tokens) == 1:
-		return last_token['value'].split('.')[-1]
+		return tokens, last_token['value'].split('.')[-1]
 
 	before_last_token = tokens[-2]
 	if before_last_token['value'] == 'as':
-		return last_token['value']
+		return tokens[:-2], last_token['value']
 
 	if before_last_token['value'] in '+/-*':
-		return _join_tokens(tokens)
+		return tokens, _join_tokens(tokens)
 
-	return last_token['value']
+	return tokens[:-1], last_token['value']
 
 def separate_table_expression(tokens):
 	table = None
@@ -365,18 +367,40 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	select_tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(select_tokens)
 
+	# print '************'
+	# print '\n'.join([str([y['value'] for y in x]) for x in select_expressions])
+	# raise Exception()
+
 	for select_expression in select_expressions:
-		alias_name = get_alias(select_expression)
-		raw_select_expression = _join_tokens(select_expression)
+		not_alias_tokens, alias_name = separate_alias(select_expression)
+		raw_select_expression = _join_tokens(not_alias_tokens)
 
 		db_alias = SelectAlias(name=alias_name)
 		db_expression = SelectExpression(raw_expression=raw_select_expression, parametrized_expression='Nay')
 
+		db_table_fields = []
+		for token in not_alias_tokens:
+			if token['type'] == 'table_field':
+				name = token['value'].split('.')[-1]
+
+				db_table_field = TableField(name=name)
+				db_table_fields.append(db_table_field)
+
 		session.add(db_alias)
 		session.add(db_expression)
+		for x in db_table_fields:
+			# db_table_fields.table = 
+			session.add(x)
+
 		db_alias.select_expressions.extend([db_expression])
+		db_expression.table_fields.extend(db_table_fields)
+
+		print '************'
+		print alias_name
+		print raw_select_expression
 
 	session.commit()
+	raise Exception()
 
 	from_tokens = get_from_tokens(tokens)
 	# print '\n'.join([x['value'] for x in from_tokens])
@@ -402,5 +426,5 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	# print '================'
 	# print '\n'.join(["%s" % (str([y['value'] for y in x])) for x in table_expressions])
 
-	# print '\n'.join(["%s: %s" % (get_alias(x), str([y['value'] for y in x])) for x in select_expressions])
+	# print '\n'.join(["%s: %s" % (separate_alias(x), str([y['value'] for y in x])) for x in select_expressions])
 	# print '*********************'
