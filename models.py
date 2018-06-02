@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:///:memory:', echo=True)
+# engine = create_engine('sqlite:///:memory:', echo=True)
+engine = create_engine('sqlite:///yay.db', echo=True)
 
 from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
@@ -81,8 +82,9 @@ class TableAlias(Base):
 					),
 			backref='table_aliases'
 			)
-
-Base.metadata.create_all(engine)
+	
+if __name__ == "__main__":
+	Base.metadata.create_all(engine)
 
 # alias = SelectAlias(name='yay')
 # session.add(alias)

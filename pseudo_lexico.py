@@ -357,6 +357,14 @@ test_sql = test_file.read()
 # test_sql = clean_comments(test_sql)
 
 for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentario ou string
+	session.query(SelectAlias).delete()
+	session.query(SelectExpression).delete()
+	session.query(TableField).delete()
+	session.query(Table).delete()
+	session.query(TableAlias).delete()
+	# falta limpar manytomany
+	session.commit()
+
 	sql_statement = clean_comments(sql_statement)
 
 	tokens = tokenize(sql_statement)
@@ -395,12 +403,11 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 		db_alias.select_expressions.extend([db_expression])
 		db_expression.table_fields.extend(db_table_fields)
 
-		print '************'
-		print alias_name
-		print raw_select_expression
+		# print '************'
+		# print alias_name
+		# print raw_select_expression
 
-	session.commit()
-	raise Exception()
+	# session.commit()
 
 	from_tokens = get_from_tokens(tokens)
 	# print '\n'.join([x['value'] for x in from_tokens])
