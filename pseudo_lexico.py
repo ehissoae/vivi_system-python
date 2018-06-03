@@ -377,6 +377,30 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens if x['type'] == 'table_field'])
 	# raise Exception()
 
+	from_tokens = get_from_tokens(tokens)
+	# print '\n'.join([x['value'] for x in from_tokens])
+
+	db_alias_dict = {}
+	table_expressions = separate_by_table_statement(from_tokens)
+	for table_expression in table_expressions:
+		table, alias, on_conditions = separate_table_expression(table_expression)
+
+		# print '*********'
+		# print _join_tokens(table_expression)
+		# print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
+
+		db_table = Table(name=table['value'])
+		session.add(db_table)
+		if alias:
+			db_table_alias = TableAlias(name=alias['value'])
+			session.add(db_table_alias)
+
+			db_table.table_aliases.extend([db_table_alias])
+
+			db_alias_dict[alias['value']] = db_table
+
+		db_alias_dict[table['value']] = db_table
+
 	select_tokens = get_select_tokens(tokens)
 	select_expressions = separate_by_select_statement(select_tokens)
 
@@ -395,14 +419,21 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 		for token in not_alias_tokens:
 			if token['type'] == 'table_field':
 				name = token['value'].split('.')[-1]
+				table_alias = '.'.join(token['value'].split('.')[:-1])
+				# table_alias = token['value'][:(len(token['value'])-len(name)-1)]
 
 				db_table_field = TableField(name=name)
+				db_table_field.table = db_alias_dict.get(table_alias)
+
 				db_table_fields.append(db_table_field)
+
+				if not db_table_field.table:
+					raise Exception("%s - %s - %s" % (table_alias, token['value'], name))
+
 
 		session.add(db_alias)
 		session.add(db_expression)
 		for x in db_table_fields:
-			# db_table_fields.table = 
 			session.add(x)
 
 		db_alias.select_expressions.extend([db_expression])
@@ -411,27 +442,6 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 		# print '************'
 		# print alias_name
 		# print raw_select_expression
-
-	# session.commit()
-
-	from_tokens = get_from_tokens(tokens)
-	# print '\n'.join([x['value'] for x in from_tokens])
-
-	table_expressions = separate_by_table_statement(from_tokens)
-	for table_expression in table_expressions:
-		table, alias, on_conditions = separate_table_expression(table_expression)
-
-		# print '*********'
-		# print _join_tokens(table_expression)
-		# print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
-
-		db_table = Table(name=table['value'])
-		session.add(db_table)
-		if alias:
-			db_table_alias = TableAlias(name=alias['value'])
-			session.add(db_table_alias)
-
-			db_table.table_aliases.extend([db_table_alias])
 
 	session.commit()
 		
