@@ -346,6 +346,8 @@ def separate_table_expression(tokens):
 		on_conditions = tokens[on_index+1:]
 		tokens = tokens[:on_index]
 
+	tokens = [x for x in tokens if x['value'] != 'as']
+
 	table = tokens[0]
 	if len(tokens) > 1:
 		alias = tokens[1]
@@ -356,7 +358,7 @@ test_file = open('resources/fake_queries/test.sql', 'r')
 test_sql = test_file.read()
 # test_sql = clean_comments(test_sql)
 
-for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentario ou string
+for sql_statement in test_sql.split(';')[2:3]: # problema se tiver ; em comentario ou string
 	session.query(SelectAlias).delete()
 	session.query(SelectExpression).delete()
 	session.query(TableField).delete()
@@ -367,11 +369,12 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	session.execute('delete from selectexpression_tablefields;')
 	session.execute('delete from table_tablealias;')
 
-	# falta limpar manytomany
 	session.commit()
 
 	sql_statement = clean_comments(sql_statement)
+	sql_statement = sql_statement.replace('`', '')
 
+	# TODO: considerar ` (crase) usada para dar escape em palavras-chave
 	tokens = tokenize(sql_statement)
 	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens])
 	# print '\n'.join(["%s: %s" % (x['type'].ljust(12), x['value']) for x in tokens if x['type'] == 'table_field'])
@@ -385,9 +388,9 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	for table_expression in table_expressions:
 		table, alias, on_conditions = separate_table_expression(table_expression)
 
-		# print '*********'
-		# print _join_tokens(table_expression)
-		# print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
+		print '*********'
+		print _join_tokens(table_expression)
+		print "%s - %s - %s" % (_get_token_value(table), _get_token_value(alias), _join_tokens(on_conditions))
 
 		db_table = Table(name=table['value'])
 		session.add(db_table)
@@ -428,7 +431,7 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 				db_table_fields.append(db_table_field)
 
 				if not db_table_field.table:
-					raise Exception("%s - %s - %s" % (table_alias, token['value'], name))
+					raise Exception("t_alias: %s \nraw: %s \nfield: %s" % (table_alias, token['value'], name))
 
 
 		session.add(db_alias)

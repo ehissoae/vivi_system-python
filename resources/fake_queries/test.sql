@@ -4,7 +4,7 @@ SELECT
 	-- pc.sale_price,
 	"yay" as nothing,
 
-	pc.gross_cost * (1 - pc.vat_out) as net_cost,
+	pc.gross_cost * (1 - pc.vat_in) as net_cost,
 	case 
 		when pc.is_private_label then "PL"
 		when pc.is_crossdocking then "XDOC" 
@@ -41,9 +41,9 @@ SELECT
 	"yay" nothing,
 	"yay",
 
-	pc.gross_cost * (1 - pc.vat_out) as net_cost,
-	pc.gross_cost * (1 - pc.vat_out) net_cost,
-	pc.gross_cost * (1 - pc.vat_out),
+	pc.gross_cost * (1 - pc.vat_in) as net_cost,
+	pc.gross_cost * (1 - pc.vat_in) net_cost,
+	pc.gross_cost * (1 - pc.vat_in),
 
 	CONCAT(pc.sku_config, "-", ps.size) as sku_plus_size,
 	CONCAT(pc.sku_config, "-", ps.size) sku_plus_size,
@@ -51,9 +51,33 @@ SELECT
 from star_schema.dim_product_config pc
 INNER JOIN star_schema.dim_product_simple ps on ps.fk_product_config = pc.id_product_config
 LIMIT 100
-
-
 ;
+
+
+select 
+    sa.name as select_alias,
+    se.raw_expression as select_exp,
+    tf.name as field,
+    t.name as _table
+from select_alias sa
+inner join selectexpression_selectalias se_sa on se_sa.select_alias_id = sa.id
+inner join select_expression se on se_sa.select_expression_id = se.id
+inner join selectexpression_tablefields se_tf on se_tf.select_expression_id = se.id
+inner join table_field tf on se_tf.table_field_id = tf.id
+inner join table t on t.id = tf.table_id
+;
+
+
+select
+	oi.price*oi.quantity as net_rev
+from orderitems as oi
+inner join orders as o on oi.order_id = o.id
+where product_id = 1
+	and o.created_at >= subdate(curdate(), 7)
+	and o.status in (2,3,4,5,6)
+;
+
+
 
 /*
 CONFIG
