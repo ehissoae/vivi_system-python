@@ -362,6 +362,11 @@ for sql_statement in test_sql.split(';')[:1]: # problema se tiver ; em comentari
 	session.query(TableField).delete()
 	session.query(Table).delete()
 	session.query(TableAlias).delete()
+
+	session.execute('delete from selectexpression_selectalias;')
+	session.execute('delete from selectexpression_tablefields;')
+	session.execute('delete from table_tablealias;')
+
 	# falta limpar manytomany
 	session.commit()
 
